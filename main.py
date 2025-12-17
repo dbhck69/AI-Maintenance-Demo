@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-app = FastAPI(title="AI Maintenance Platform API")
+app = FastAPI(title="AI Maintenance Demo")
 
-# ---------------- CORS ----------------
+# ---------- CORS ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,12 +13,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------- MODELS ----------------
+# ---------- MODELS ----------
 class PredictRequest(BaseModel):
     mileage: int
     last_service_km: int
     usage_pattern: str
-
 
 class BookingRequest(BaseModel):
     vehicle_id: str
@@ -26,21 +25,12 @@ class BookingRequest(BaseModel):
     date: str
     time_slot: str
 
-
-class ManufacturingRequest(BaseModel):
-    issue_name: str
-
-
-# ---------------- ROOT ----------------
+# ---------- ROOT ----------
 @app.get("/")
 def root():
-    return {
-        "status": "Backend running",
-        "message": "AI Maintenance Platform API is live"
-    }
+    return {"status": "Backend running"}
 
-
-# ---------------- AI HEALTH PREDICTION ----------------
+# ---------- PREDICTION ----------
 @app.post("/predict-risk")
 def predict_risk(data: PredictRequest):
     if data.mileage - data.last_service_km > 8000:
@@ -56,60 +46,14 @@ def predict_risk(data: PredictRequest):
         "recommendation": "Routine monitoring advised"
     }
 
-
-# ---------------- SERVICE BOOKING (SAFE DEMO VERSION) ----------------
+# ---------- BOOKING (CANNOT FAIL) ----------
 @app.post("/book-service")
 def book_service(data: BookingRequest):
-    # 🚫 No DB, no external calls, cannot crash
     return {
         "message": "Service booking confirmed",
+        "status": "CONFIRMED",
         "vehicle_id": data.vehicle_id,
         "service_center": data.service_center,
         "date": data.date,
-        "time_slot": data.time_slot,
-        "status": "CONFIRMED"
+        "time_slot": data.time_slot
     }
-
-
-# ---------------- MANUFACTURING INSIGHTS ----------------
-@app.post("/manufacturing-insights")
-def manufacturing_insights(data: ManufacturingRequest):
-    return {
-        "issue": data.issue_name,
-        "severity": "Medium",
-        "recurrence_count": 3,
-        "RCA": [
-            "High clutch usage in urban traffic",
-            "Frequent stop-and-go driving conditions"
-        ],
-        "CAPA": [
-            "Improve clutch material quality",
-            "Revise preventive maintenance schedule"
-        ]
-    }
-
-
-# ---------------- ANALYTICS ----------------
-@app.get("/analytics/feature-stats")
-def feature_stats():
-    return {
-        "Mileage": 0.45,
-        "Service Gap": 0.30,
-        "Usage Pattern": 0.15,
-        "Temperature": 0.10
-    }
-
-
-@app.get("/analytics/risk-distribution")
-def risk_distribution():
-    return {
-        "low": 5,
-        "medium": 3,
-        "high": 2
-    }
-
-
-# ---------------- START ----------------
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
