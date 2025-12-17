@@ -1,73 +1,142 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
-
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from pymongo import MongoClient
 
-from agents.prediction import predict_failure_risk
-from agents.booking import create_service_booking
-from agents.manufacturing import generate_manufacturing_insights
-from agents.analytics import get_risk_distribution, get_feature_statistics
-
-app = FastAPI(
-    title="Autonomous AI Maintenance Platform",
-    description="Production-grade backend for predictive maintenance and service optimization",
-    version="1.0.0"
-)
+# ---------------- APP ----------------
+app = FastAPI(title="AI Maintenance Platform API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For demo only (production will be restricted)
+    allow_origins=["*"],  # demo purpose
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ---------------- DB ----------------
+MONGO_URI = "mongodb+srv://db09762:Deepak%4029@cluster0.pscd3cb.mongodb.net/?appName=Cluster0"
+client = MongoClient(MONGO_URI)
+db = client["ai_maintenance"]
+bookings_collection = db["service_bookings"]
 
-class VehicleData(BaseModel):
+# ---------------- MODELS ----------------
+class PredictRequest(BaseModel):
     mileage: int
     last_service_km: int
+    usage_pattern: str
 
-class BookingData(BaseModel):
+
+class BookingRequest(BaseModel):
     vehicle_id: str
     service_center: str
     date: str
     time_slot: str
 
+
 class ManufacturingRequest(BaseModel):
     issue_name: str
 
+
+# ---------------- ROUTES ----------------
 @app.get("/")
 def root():
+    return {"status": "Backend running", "message": "AI Maintenance Platform API is live"}
+
+
+# --------- AI HEALTH PREDICTION ---------
+@app.post("/predict-risk")
+def predict_risk(data: PredictRequest):
+    distance = data.mileage - data.last_service_km
+
+    if distance > 8000:
+        return {
+            "risk_level": "High",
+            "issue": "Clutch system wear",
+            "recommendation": "Immediate service booking recommended"
+        }
+
     return {
-        "status": "Backend running",
-        "message": "AI Maintenance Platform API is live"
+        "risk_level": "Low",
+        "issue": "No critical issues detected",
+        "recommendation": "Routine monitoring advised"
     }
 
-@app.post("/predict-risk")
-def predict_risk(data: dict):
-    result = predict_failure_risk(data.dict())
-    return result
 
+# --------- SERVICE BOOKING ---------
 @app.post("/book-service")
-def book_service(data: BookingData):
-    result = create_service_booking(data.dict())
-    return result
+def book_service(data: BookingRequest):
+    booking = {
+        "vehicle_id": data.vehicle_id,
+        "service_center": data.service_center,
+        "date": data.date,
+        "time_slot": data.time_slot,
+        "detected_issue": "Clutch system wear",
+        "status": "CONFIRMED"
+    }
 
+    bookings_collection.insert_one(booking)
+
+    return {"message": "Service booking confirmed"}
+
+
+# --------- MANUFACTURING INSIGHTS ---------
 @app.post("/manufacturing-insights")
 def manufacturing_insights(data: ManufacturingRequest):
-    result = generate_manufacturing_insights(data.issue_name)
-    return result
+    count = bookings_collection.count_documents({
+        "detected_issue": data.issue_name
+    })
+
+    if count >= 3:
+        return {
+            "issue": data.issue_name,
+            "severity": "Medium",
+            "recurrence_count": count,
+            "RCA": [
+                "Accelerated wear due to frequent clutch usage",
+                "Urban stop-and-go driving conditions"
+            ],
+            "CAPA": [
+                "Improve clutch material quality",
+                "Update preventive maintenance intervals"
+            ]
+        }
+
+    return {
+        "issue": data.issue_name,
+        "severity": "Low",
+        "recurrence_count": count,
+        "RCA": ["Isolated service incident"],
+        "CAPA": ["Monitor future occurrences"]
+    }
+
+
+# --------- ANALYTICS ---------
+@app.get("/analytics/feature-stats")
+def feature_stats():
+    return {
+        "Mileage": 0.45,
+        "Service Gap": 0.30,
+        "Usage Pattern": 0.15,
+        "Temperature": 0.10
+    }
+
 
 @app.get("/analytics/risk-distribution")
-def analytics_risk_distribution():
-    return get_risk_distribution()
+def risk_distribution():
+    total = bookings_collection.count_documents({})
+    high = bookings_collection.count_documents({"detected_issue": "Clutch system wear"})
+    medium = max(0, total - high)
+    low = max(0, total - high - medium)
+
+    return {
+        "low": low,
+        "medium": medium,
+        "high": high
+    }
 
 
-@app.get("/analytics/feature-stats")
-def analytics_feature_stats():
-    return get_feature_statistics()
-
-
+# --------- RENDER SAFE START ---------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
