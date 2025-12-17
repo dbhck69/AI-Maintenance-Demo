@@ -44,7 +44,7 @@ def root():
     }
 
 @app.post("/predict-risk")
-def predict_risk(data: VehicleData):
+def predict_risk(data: dict):
     result = predict_failure_risk(data.dict())
     return result
 
