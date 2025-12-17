@@ -43,9 +43,7 @@ def root():
 # ---------------- AI HEALTH PREDICTION ----------------
 @app.post("/predict-risk")
 def predict_risk(data: PredictRequest):
-    distance = data.mileage - data.last_service_km
-
-    if distance > 8000:
+    if data.mileage - data.last_service_km > 8000:
         return {
             "risk_level": "High",
             "issue": "Clutch system wear",
@@ -59,13 +57,16 @@ def predict_risk(data: PredictRequest):
     }
 
 
-# ---------------- SERVICE BOOKING ----------------
+# ---------------- SERVICE BOOKING (SAFE DEMO VERSION) ----------------
 @app.post("/book-service")
 def book_service(data: BookingRequest):
+    # 🚫 No DB, no external calls, cannot crash
     return {
         "message": "Service booking confirmed",
         "vehicle_id": data.vehicle_id,
         "service_center": data.service_center,
+        "date": data.date,
+        "time_slot": data.time_slot,
         "status": "CONFIRMED"
     }
 
@@ -79,11 +80,11 @@ def manufacturing_insights(data: ManufacturingRequest):
         "recurrence_count": 3,
         "RCA": [
             "High clutch usage in urban traffic",
-            "Increased stop-and-go driving patterns"
+            "Frequent stop-and-go driving conditions"
         ],
         "CAPA": [
-            "Improve clutch material durability",
-            "Adjust preventive maintenance intervals"
+            "Improve clutch material quality",
+            "Revise preventive maintenance schedule"
         ]
     }
 
